@@ -13,9 +13,9 @@ float ping_dist_in_front_=3.0;
 int ping_index_=-1;
 double angle_min_=-0.029;
 double angle_max_= 0.029;
-double angle_increment_=0.01;
-double range_min_ = -500.0;
-double range_max_ = 500.0;
+double angle_increment_=0.0069;
+double range_min_ = -5.0;
+double range_max_ = 5.0;
 bool laser_alarm_=false;
 int ping_index_start;
 int ping_index_end;
@@ -26,7 +26,7 @@ ros::Publisher lidar_dist_publisher_;
 // to improve reliability and avoid false alarms or failure to see an obstacle
 
 void laserCallback(const sensor_msgs::LaserScan& laser_scan) {
-    if (ping_index_<0)  {
+  
         //for first message received, set up the desired index of LIDAR range to eval
         angle_min_ = laser_scan.angle_min;
         angle_max_ = laser_scan.angle_max;
@@ -36,14 +36,14 @@ void laserCallback(const sensor_msgs::LaserScan& laser_scan) {
         // what is the index of the ping that is straight ahead?
         // BETTER would be to use transforms, which would reference how the LIDAR is mounted;
         // but this will do for simple illustration
-        ping_index_start = (-1.57 -angle_min_)/angle_increment_;
-        ping_index_end = (1.57 -angle_min_)/angle_increment_;
+        ping_index_start = (int)((1.57 -angle_max_)/angle_increment_);
+        ping_index_end = (int)((1.57 -angle_min_)/angle_increment_);
         ROS_INFO("LIDAR setup: i = %d , r = %d",ping_index_start, ping_index_end);
         
-    }
     
-   for (double i = ping_index_start; i <= ping_index_end; angle_increment_){
-   i = i + angle_increment_;
+    
+   for (int i = ping_index_start; i <= ping_index_end; 1){
+   i = i + 1;
    ping_dist_in_front_ = laser_scan.ranges[i];
    
    ROS_INFO("ping dist in front = %f",ping_dist_in_front_);
