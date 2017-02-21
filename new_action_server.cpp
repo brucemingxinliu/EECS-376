@@ -131,6 +131,50 @@ void get_yaw_and_dist(geometry_msgs::Pose current_pose, geometry_msgs::Pose goal
 void newActionServer::executeCB(const actionlib::SimpleActionServer<new_action_server::newAction>::GoalCOnstPrt& goal)
 {
    ROS_INFO("Callback activated");
-   
+   double yaw_desired, yaw_current, travel_distance, spin_angle;
+   geometry_msgs::Pose pose_desired;
 
+}
+//how to call the points to callback function...
+
+
+void do_inits(ros::NodeHandle &n) {
+  //initialize components of the twist command global variable
+    g_twist_cmd.linear.x=0.0;
+    g_twist_cmd.linear.y=0.0;    
+    g_twist_cmd.linear.z=0.0;
+    g_twist_cmd.angular.x=0.0;
+    g_twist_cmd.angular.y=0.0;
+    g_twist_cmd.angular.z=0.0;  
+    
+    //define initial position to be 0
+    g_current_pose.position.x = 0.0;
+    g_current_pose.position.y = 0.0;
+    g_current_pose.position.z = 0.0;
+    
+    // define initial heading to be "0"
+    g_current_pose.orientation.x = 0.0;
+    g_current_pose.orientation.y = 0.0;
+    g_current_pose.orientation.z = 0.0;
+    g_current_pose.orientation.w = 1.0;
+    
+    // we declared g_twist_commander as global, but never set it up; do that now that we have a node handle
+    g_twist_commander = n.advertise<geometry_msgs::Twist>("/robot0/cmd_vel", 1);    
+}
+
+int main(int argc, char **argv)
+{
+  ros::init(argc, argv, "new_action_server");
+  ros::NodeHandle n;
+  
+  // to clean up "main", do initializations in a separate function
+  // a poor-man's class constructor
+  do_inits(n); //pass in a node handle so this function can set up publisher with it
+  
+  // establish a service to receive path commands
+  newActionServer actionserver;
+  ROS_INFO("Ready to accept paths.");
+  ros::spin(); //callbacks do all the work now
+
+  return 0;
 }
