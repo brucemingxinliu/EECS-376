@@ -57,14 +57,122 @@ int Navigator::navigate_to_table() {
 int Navigator::navigate_to_pose(geometry_msgs::PoseStamped goal_pose) {
     return navigator::navigatorResult::DESIRED_POSE_ACHIEVED;
 }
+const double g_move_speed = 1.0; // set forward speed to this value, e.g. 1m/s
+const double g_spin_speed = 1.0; // set yaw rate to this value, e.g. 1 rad/s
+const double g_sample_dt = 0.01;
+const double g_dist_tol = 0.01; // 1cm
+//global variables, including a publisher object
+geometry_msgs::Twist g_twist_cmd;
+ros::Publisher g_twist_commander; //global publisher object
+geometry_msgs::Pose g_current_pose; // not really true--should get this from odom 
 
 
+// here are a few useful utility functions:
+double sgn(double x);
+double min_spin(double spin_angle);
+double convertPlanarQuat2Phi(geometry_msgs::Quaternion quaternion);
+geometry_msgs::Quaternion convertPlanarPhi2Quaternion(double phi);
+
+void do_halt();
+void do_move(double distance);
+void do_spin(double spin_ang);
+
+double sgn(double x) { if (x>0.0) {return 1.0; }
+    else if (x<0.0) {return -1.0;}
+    else {return 0.0;}
+}
+double min_spin(double spin_angle) {
+        if (spin_angle>M_PI) {
+            spin_angle -= 2.0*M_PI;}
+        if (spin_angle< -M_PI) {
+            spin_angle += 2.0*M_PI;}
+         return spin_angle;   
+}            
+
+// a useful conversion function: from quaternion to yaw
+double convertPlanarQuat2Phi(geometry_msgs::Quaternion quaternion) {
+    double quat_z = quaternion.z;
+    double quat_w = quaternion.w;
+    double phi = 2.0 * atan2(quat_z, quat_w); // cheap conversion from quaternion to heading for planar motion
+    return phi;
+}
+
+//and the other direction:
+geometry_msgs::Quaternion convertPlanarPhi2Quaternion(double phi) {
+    geometry_msgs::Quaternion quaternion;
+    quaternion.x = 0.0;
+    quaternion.y = 0.0;
+    quaternion.z = sin(phi / 2.0);
+    quaternion.w = cos(phi / 2.0);
+    return quaternion;
+}
+
+void do_spin(double spin_ang) {
+    ros::Rate loop_timer(1/g_sample_dt);
+    double timer=0.0;
+    double final_time = fabs(spin_ang)/g_spin_speed;
+    g_twist_cmd.angular.z= sgn(spin_ang)*g_spin_speed;
+    while(timer<final_time) {
+          g_twist_commander.publish(g_twist_cmd);
+          timer+=g_sample_dt;
+          loop_timer.sleep(); 
+          }  
+    do_halt(); 
+} 
+
+//a function to move forward by a specified distance (in meters), then halt
+void do_move(double distance) { // always assumes robot is already oriented properly
+                                // but allow for negative distance to mean move backwards
+    ros::Rate loop_timer(1/g_sample_dt);
+    double timer=0.0;
+    double final_time = fabs(distance)/g_move_speed;
+    g_twist_cmd.angular.z = 0.0; //stop spinning
+    g_twist_cmd.linear.x = sgn(distance)*g_move_speed;
+    while(timer<final_time) {
+          g_twist_commander.publish(g_twist_cmd);
+          timer+=g_sample_dt;
+          loop_timer.sleep(); 
+          }  
+    do_halt();
+}
+
+void do_halt() {
+    ros::Rate loop_timer(1/g_sample_dt);   
+    g_twist_cmd.angular.z= 0.0;
+    g_twist_cmd.linear.x=0.0;
+    for (int i=0;i<10;i++) {
+          g_twist_commander.publish(g_twist_cmd);
+          loop_timer.sleep(); 
+          }   
+}
+
+
+
+//THIS FUNCTION IS NOT FILLED IN: NEED TO COMPUTE HEADING AND TRAVEL DISTANCE TO MOVE
+//FROM START TO GOAL
+void get_yaw_and_dist(geometry_msgs::Pose current_pose, geometry_msgs::Pose goal_pose,double &dist, double &heading) {
+ 
+ dist = 0.0; //FALSE!!
+ if (dist < g_dist_tol) { //too small of a motion, so just set the heading from goal heading
+   heading = convertPlanarQuat2Phi(goal_pose.orientation); 
+ }
+ else {
+    heading = 0.0; //FALSE!!
+ }
+
+}
 void Navigator::executeCB(const actionlib::SimpleActionServer<navigator::navigatorAction>::GoalConstPtr& goal) {
-    int destination_id = goal->location_code;
+    /*int destination_id = goal->desired.pose;
     geometry_msgs::PoseStamped destination_pose;
     int navigation_status;
+    int n_pts = destination_id.size();
+    for(int i=1;n_pts;i++){
 
-    if (destination_id==navigator::navigatorGoal::COORDS) {
+
+
+}
+/*
+    /*if (destination_id==navigator::navigatorGoal::COORDS) {
         destination_pose=goal->desired_pose;
     }
     
@@ -115,12 +223,12 @@ void Navigator::executeCB(const actionlib::SimpleActionServer<navigator::navigat
              result_.return_code = navigator::navigatorResult::DESTINATION_CODE_UNRECOGNIZED; 
              navigator_as_.setAborted(result_);
             }
-  
+  */
 }
- geometry_msgs::Twist g_twist_cmd;
 
- ros::NodeHandle n;
- ros::Publisher g_twist_commander = n.advertise<geometry_msgs::Twist>("/robot0/cmd_vel", 1); 
+
+ //ros::NodeHandle n;
+ //ros::Publisher g_twist_commander = n.advertise<geometry_msgs::Twist>("/robot0/cmd_vel", 1); 
 //the topic is published to robot0...
 
 
