@@ -7,6 +7,7 @@
 #include <string>
 #include <math.h>
 #include <std_msgs/Float64.h>
+#include <nav_msgs/Path.h>
 
 class newActionServer
 {
@@ -133,12 +134,48 @@ void newActionServer::executeCB(const actionlib::SimpleActionServer<new_action_s
    ROS_INFO("Callback activated");
    double yaw_desired, yaw_current, travel_distance, spin_angle;
    geometry_msgs::Pose pose_desired;
+   
+   while(ros::ok())
+   {
 
+
+   double alarm = goal->alarm;
+   double x = goal->x_posestamps;
+   double y = goal->y_posestamps;
+   double z = goal->z_posestamps;
+   do_move(x);
+   do_spin(z);
+   do_move(y);
+   if(alarm ==1)
+   {
+   	do_halt();
+   }
+
+   /* for (int i=0;i<npts;i++) { //visit each subgoal
+        // odd notation: drill down, access vector element, drill some more to get pose
+        pose_desired = request.nav_path.poses[i].pose; //get next pose from vector of poses
+
+        yaw_desired = convertPlanarQuat2Phi(pose_desired.orientation); //from i'th desired pose
+        
+        ROS_INFO("pose %d: desired yaw = %f",i,yaw_desired);        
+        yaw_current = convertPlanarQuat2Phi(g_current_pose.orientation); //our current yaw--should use a sensor
+        spin_angle = yaw_desired - yaw_current; // spin this much
+        spin_angle = min_spin(spin_angle);// but what if this angle is > pi?  then go the other way
+        do_spin(spin_angle); // carry out this incremental action
+        // we will just assume that this action was successful--really should have sensor feedback here
+        g_current_pose.orientation = pose_desired.orientation; // assumes got to desired orientation precisely
+        
+        //FIX THE NEXT LINE, BASED ON get_yaw_and_dist()
+        do_move(3.0);  // move forward 1m...just for illustration; SHOULD compute this from subgoal pose
+        }
+*/
+  return true;
+}
 }
 //how to call the points to callback function...
 
 
-void do_inits(ros::NodeHandle &n) {
+/*void do_inits(ros::NodeHandle &n) {
   //initialize components of the twist command global variable
     g_twist_cmd.linear.x=0.0;
     g_twist_cmd.linear.y=0.0;    
@@ -160,18 +197,13 @@ void do_inits(ros::NodeHandle &n) {
     
     // we declared g_twist_commander as global, but never set it up; do that now that we have a node handle
     g_twist_commander = n.advertise<geometry_msgs::Twist>("/robot0/cmd_vel", 1);    
-}
+}*/
 
 int main(int argc, char **argv)
 {
   ros::init(argc, argv, "new_action_server");
   ros::NodeHandle n;
-  
-  // to clean up "main", do initializations in a separate function
-  // a poor-man's class constructor
-  do_inits(n); //pass in a node handle so this function can set up publisher with it
-  
-  // establish a service to receive path commands
+
   newActionServer actionserver;
   ROS_INFO("Ready to accept paths.");
   ros::spin(); //callbacks do all the work now
