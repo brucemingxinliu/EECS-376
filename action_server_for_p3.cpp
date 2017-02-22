@@ -165,10 +165,26 @@ void Navigator::executeCB(const actionlib::SimpleActionServer<navigator::navigat
     ROS_INFO("callback activated");
     double yaw_desired, yaw_current, travel_distance, spin_angle;
     geometry_msgs::Pose desired_pose;
-    geometry_msgs::PoseStamped pose_id;
-    pose_id = goal->desired_pose;
-    
+    geometry_msgs::Pose pose_desired;
 
+    for(int i = 1; 4; i++){
+    pose_desired = goal->desired_pose[i].pose;
+    yaw_desired = convertPlanarQuat2Phi(pose_desired.orientation); //from i'th desired pose
+        
+        ROS_INFO("pose %d: desired yaw = %f",i,yaw_desired);        
+        yaw_current = convertPlanarQuat2Phi(g_current_pose.orientation); //our current yaw--should use a sensor
+        spin_angle = yaw_desired - yaw_current; // spin this much
+        spin_angle = min_spin(spin_angle);// but what if this angle is > pi?  then go the other way
+        do_spin(spin_angle); // carry out this incremental action
+        // we will just assume that this action was successful--really should have sensor feedback here
+        g_current_pose.orientation = pose_desired.orientation; // assumes got to desired orientation precisely
+        
+        //FIX THE NEXT LINE, BASED ON get_yaw_and_dist()
+        do_move(3.0);  // move forward 1m...just for illustration; SHOULD compute this from subgoal pose
+        
+
+ 
+}
    // int destination_id = goal->desired.pose;
    /* geometry_msgs::PoseStamped destination_pose;
     int navigation_status;
