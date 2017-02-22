@@ -72,9 +72,19 @@ int main(int argc, char** argv) {
     pose.orientation.z = 0.0; // implies oriented at yaw=0, i.e. along x axis
     pose.orientation.w = 1.0;
     
+    pose.position.x = 2.0;
+    pose.position.y = 0.0;
+ navigation_goal.desired_pose.push_back(g_desired_pose);
+    pose.position.x = 2.0;
+    pose.position.y = 2.0;
+ navigation_goal.desired_pose.push_back(g_desired_pose);
+    pose.position.x = 4.0;
+    pose.position.y = 4.0;
+ navigation_goal.desired_pose.push_back(g_desired_pose);
+   
     g_desired_pose.pose = pose;
 
-    navigation_goal.desired_pose = g_desired_pose;
+   
     
     ROS_INFO("sending goal: ");
         navigator_ac.sendGoal(navigation_goal,&navigatorDoneCb); // we could also name additional callback functions here, if desired
@@ -88,6 +98,7 @@ int main(int argc, char** argv) {
         }
         if(g_alarm = true){
     ROS_WARN("LIDAR ALARM IS SOUNDED");
+    ros::spinOnce();
 }
 
     return 0;
