@@ -16,7 +16,7 @@ using namespace std;
 bool g_alarm;
 
 geometry_msgs::PoseStamped g_desired_pose;
-int g_navigator_rtn_code;
+int nav_pose;
 
 void alarmCB(const std_msgs::Float64& message_holder)
 {
@@ -27,7 +27,10 @@ void alarmCB(const std_msgs::Float64& message_holder)
 
 void navigatorDoneCb(const actionlib::SimpleClientGoalState& state,
         const navigator::navigatorResultConstPtr& result) {
-    ROS_INFO(" navigatorDoneCb: server responded with state [%s]", state.toString().c_str());
+
+    nav_pose = result->return_code;
+
+   /* ROS_INFO(" navigatorDoneCb: server responded with state [%s]", state.toString().c_str());
     g_navigator_rtn_code=result->return_code;
 
     ROS_INFO("got object code response = %d; ",g_navigator_rtn_code);
@@ -39,7 +42,7 @@ void navigatorDoneCb(const actionlib::SimpleClientGoalState& state,
     }
     else {
         ROS_WARN("desired pose not reached!");
-    }
+    }*/
 }
 
 int main(int argc, char** argv) {
@@ -71,7 +74,12 @@ int main(int argc, char** argv) {
     pose.orientation.y = 0.0; // ditto
     pose.orientation.z = 0.0; // implies oriented at yaw=0, i.e. along x axis
     pose.orientation.w = 1.0;
-    
+        
+
+    if(g_alarm = true){
+    ROS_WARN("LIDAR ALARM IS SOUNDED");
+   
+
     pose.position.x = 2.0;
     pose.position.y = 0.0;
  navigation_goal.desired_pose.push_back(g_desired_pose);
@@ -83,7 +91,20 @@ int main(int argc, char** argv) {
  navigation_goal.desired_pose.push_back(g_desired_pose);
    
     g_desired_pose.pose = pose;
-
+}
+   else{
+    pose.position.x = 3.0;
+    pose.position.y = 2.0;
+    navigation_goal.desired_pose.push_back(g_desired_pose);
+    pose.position.x = 3.0;
+    pose.position.y = 1.0;
+    navigation_goal.desired_pose.push_back(g_desired_pose);
+    pose.position.x = 1.0;
+    pose.position.y = 1.0;
+    navigation_goal.desired_pose.push_back(g_desired_pose);
+   
+    g_desired_pose.pose = pose;
+}
    
     
     ROS_INFO("sending goal: ");
@@ -96,10 +117,7 @@ int main(int argc, char** argv) {
             ROS_WARN("giving up waiting on result ");
             return 1;
         }
-        if(g_alarm = true){
-    ROS_WARN("LIDAR ALARM IS SOUNDED");
-    ros::spinOnce();
-}
+    
 
     return 0;
 }
