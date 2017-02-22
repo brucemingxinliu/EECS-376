@@ -1,10 +1,15 @@
-// example_action_server: a simple action server
-// Wyatt Newman
 
+
+
+//so far, the lidar alarm topic is subscribed. However no poses have been given in the client, and still needs to figure out how to send poses via action to the action server. 
 #include<ros/ros.h>
 #include <actionlib/server/simple_action_server.h>
 #include<navigator/navigatorAction.h>
-
+#include <geometry_msgs/Pose.h>
+#include <geometry_msgs/Twist.h>
+#include <iostream>
+#include <string>
+#include <math.h>
 
 class Navigator {
 private:
@@ -21,7 +26,7 @@ private:
     int navigate_home();
     int navigate_to_table();
     int navigate_to_pose(geometry_msgs::PoseStamped goal_pose);
-
+    
 public:
     Navigator(); //define the body of the constructor outside of class definition
 
@@ -112,14 +117,20 @@ void Navigator::executeCB(const actionlib::SimpleActionServer<navigator::navigat
             }
   
 }
+ geometry_msgs::Twist g_twist_cmd;
+
+ ros::NodeHandle n;
+ ros::Publisher g_twist_commander = n.advertise<geometry_msgs::Twist>("/robot0/cmd_vel", 1); 
+//the topic is published to robot0...
+
 
 int main(int argc, char** argv) {
     ros::init(argc, argv, "navigation_action_server"); // name this node 
 
     ROS_INFO("instantiating the navigation action server: ");
-
+    ros::NodeHandle n;
     Navigator navigator_as; // create an instance of the class "ObjectFinder"
-    
+
     ROS_INFO("going into spin");
     // from here, all the work is done in the action server, with the interesting stuff done within "executeCB()"
     // you will see 5 new topics under example_action: cancel, feedback, goal, result, status
