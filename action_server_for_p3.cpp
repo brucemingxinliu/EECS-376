@@ -162,8 +162,15 @@ void get_yaw_and_dist(geometry_msgs::Pose current_pose, geometry_msgs::Pose goal
 
 }
 void Navigator::executeCB(const actionlib::SimpleActionServer<navigator::navigatorAction>::GoalConstPtr& goal) {
-    /*int destination_id = goal->desired.pose;
-    geometry_msgs::PoseStamped destination_pose;
+    ROS_INFO("callback activated");
+    double yaw_desired, yaw_current, travel_distance, spin_angle;
+    geometry_msgs::Pose desired_pose;
+    geometry_msgs::PoseStamped pose_id;
+    pose_id = goal->desired_pose;
+    
+
+   // int destination_id = goal->desired.pose;
+   /* geometry_msgs::PoseStamped destination_pose;
     int navigation_status;
     int n_pts = destination_id.size();
     for(int i=1;n_pts;i++){
