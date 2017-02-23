@@ -167,7 +167,7 @@ void Navigator::executeCB(const actionlib::SimpleActionServer<navigator::navigat
     geometry_msgs::Pose desired_pose;
     geometry_msgs::Pose pose_desired;
 
-    for(int i = 1; 4; i++){
+    for(int i = 0; 3; i++){
     pose_desired = goal->desired_pose[i].pose;
     yaw_desired = convertPlanarQuat2Phi(pose_desired.orientation); //from i'th desired pose
         
@@ -254,6 +254,29 @@ void Navigator::executeCB(const actionlib::SimpleActionServer<navigator::navigat
  //ros::Publisher g_twist_commander = n.advertise<geometry_msgs::Twist>("/robot0/cmd_vel", 1); 
 //the topic is published to robot0...
 
+void do_inits(ros::NodeHandle &n) {
+  //initialize components of the twist command global variable
+    g_twist_cmd.linear.x=0.0;
+    g_twist_cmd.linear.y=0.0;    
+    g_twist_cmd.linear.z=0.0;
+    g_twist_cmd.angular.x=0.0;
+    g_twist_cmd.angular.y=0.0;
+    g_twist_cmd.angular.z=0.0;  
+    
+    //define initial position to be 0
+    g_current_pose.position.x = 0.0;
+    g_current_pose.position.y = 0.0;
+    g_current_pose.position.z = 0.0;
+    
+    // define initial heading to be "0"
+    g_current_pose.orientation.x = 0.0;
+    g_current_pose.orientation.y = 0.0;
+    g_current_pose.orientation.z = 0.0;
+    g_current_pose.orientation.w = 1.0;
+    
+    // we declared g_twist_commander as global, but never set it up; do that now that we have a node handle
+    g_twist_commander = n.advertise<geometry_msgs::Twist>("/robot0/cmd_vel", 1);    
+}
 
 int main(int argc, char** argv) {
     ros::init(argc, argv, "navigation_action_server"); // name this node 
@@ -261,7 +284,7 @@ int main(int argc, char** argv) {
     ROS_INFO("instantiating the navigation action server: ");
     ros::NodeHandle n;
     Navigator navigator_as; // create an instance of the class "ObjectFinder"
-
+    do_inits(n); 
     ROS_INFO("going into spin");
     // from here, all the work is done in the action server, with the interesting stuff done within "executeCB()"
     // you will see 5 new topics under example_action: cancel, feedback, goal, result, status
