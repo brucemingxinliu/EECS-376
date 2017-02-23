@@ -24,6 +24,14 @@ void alarmCB(const std_msgs::Float64& message_holder)
     
 
 }//lidar alarm void declare...
+geometry_msgs::Quaternion convertPlanarPhi2Quaternion(double phi) {
+    geometry_msgs::Quaternion quaternion;
+    quaternion.x = 0.0;
+    quaternion.y = 0.0;
+    quaternion.z = sin(phi / 2.0);
+    quaternion.w = cos(phi / 2.0);
+    return quaternion;
+}
 
 void navigatorDoneCb(const actionlib::SimpleClientGoalState& state,
         const navigator::navigatorResultConstPtr& result) {
@@ -48,7 +56,7 @@ void navigatorDoneCb(const actionlib::SimpleClientGoalState& state,
 int main(int argc, char** argv) {
     ros::init(argc, argv, "example_navigator_action_client"); // name this node 
     ros::NodeHandle nh; //standard ros node handle    
-    
+    geometry_msgs::Quaternion quat;
     g_alarm = nh.subscribe("lidar_alarm",1,alarmCB);
     actionlib::SimpleActionClient<navigator::navigatorAction> navigator_ac("navigatorActionServer", true);
     
@@ -79,26 +87,41 @@ int main(int argc, char** argv) {
     if(g_alarm = true){
     ROS_WARN("LIDAR ALARM IS SOUNDED");
    
-
-    pose.position.x = 2.0;
+    quat = convertPlanarPhi2Quaternion(0.0); // get a quaternion corresponding to this heading
+    pose.orientation = quat;   
+    pose.position.x = 8.0;
     pose.position.y = 0.0;
  navigation_goal.desired_pose.push_back(g_desired_pose);
-    pose.position.x = 2.0;
-    pose.position.y = 2.0;
+
+    quat = convertPlanarPhi2Quaternion(0.3); // get a quaternion corresponding to this heading
+    pose.orientation = quat;   
+    pose.position.x = 3.0;
+    pose.position.y = 3.0;
  navigation_goal.desired_pose.push_back(g_desired_pose);
-    pose.position.x = 4.0;
-    pose.position.y = 4.0;
+
+    quat = convertPlanarPhi2Quaternion(1.57); // get a quaternion corresponding to this heading
+    pose.orientation = quat;   
+    pose.position.x = 2.0;
+    pose.position.y = 3.0;
  navigation_goal.desired_pose.push_back(g_desired_pose);
    
     g_desired_pose.pose = pose;
 }
    else{
-    pose.position.x = 3.0;
+    quat = convertPlanarPhi2Quaternion(0.0); // get a quaternion corresponding to this heading
+    pose.orientation = quat;   
+    pose.position.x = 8.0;
     pose.position.y = 2.0;
     navigation_goal.desired_pose.push_back(g_desired_pose);
+
+    quat = convertPlanarPhi2Quaternion(0.3); // get a quaternion corresponding to this heading
+    pose.orientation = quat;
     pose.position.x = 3.0;
     pose.position.y = 1.0;
     navigation_goal.desired_pose.push_back(g_desired_pose);
+
+    quat = convertPlanarPhi2Quaternion(1.57); // get a quaternion corresponding to this heading
+    pose.orientation = quat;  
     pose.position.x = 1.0;
     pose.position.y = 1.0;
     navigation_goal.desired_pose.push_back(g_desired_pose);
