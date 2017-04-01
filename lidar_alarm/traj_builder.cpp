@@ -41,7 +41,7 @@ TrajBuilder::TrajBuilder()  {
     speed_max_ = default_speed_max; //1.0; //1 m/sec
     omega_max_ = default_omega_max; //1.0; //1 rad/sec
     path_move_tol_ = default_path_move_tol; //0.01; // if path points are within 1cm, fuggidaboutit   
-   double deaccel_max_ = -0.5;//-0.5
+
     //define a halt state; zero speed and spin, and fill with viable coords
     halt_twist_.linear.x = 0.0;
     halt_twist_.linear.y = 0.0;
@@ -175,7 +175,6 @@ void TrajBuilder::build_trapezoidal_spin_traj(geometry_msgs::PoseStamped start_p
 //upper-level function to construct a spin-in-place trajectory
 // this function decides if triangular or trapezoidal angular-velocity
 // profile is needed
-
 void TrajBuilder::build_spin_traj(geometry_msgs::PoseStamped start_pose,
         geometry_msgs::PoseStamped end_pose,
         std::vector<nav_msgs::Odometry> &vec_of_states) {
@@ -404,52 +403,57 @@ void TrajBuilder::build_triangular_spin_traj(geometry_msgs::PoseStamped start_po
 
 //this function would be useful for planning a need for sudden braking
 //compute trajectory corresponding to applying max prudent decel to halt
-void TrajBuilder::build_braking_traj(geometry_msgs::PoseStamped start_pose, std::vector<nav_msgs::Odometry> &vec_of_states)
- {
-    geometry_msgs::PoseStamped end_pose;
-    double x_start = start_pose.pose.position.x;
-    double y_start = start_pose.pose.position.y;
-    double x_end = end_pose.pose.position.x;
-    double y_end = end_pose.pose.position.y;
-    double dx = x_end - x_start;
-    double dy = y_end - y_start;
-    double psi_des = atan2(dy, dx);
-    double trip_len = sqrt(dx * dx + dy * dy);
-    double t_ramp = speed_max_ / accel_max_;
-    double ramp_up_dist = 0.5 * accel_max_ * t_ramp*t_ramp;
-    double cruise_distance = trip_len - 2.0 * ramp_up_dist; //distance to travel at v_max 
-    ROS_INFO("t_ramp =%f",t_ramp);
-    ROS_INFO("ramp-up dist = %f",ramp_up_dist);
-    ROS_INFO("cruise distance = %f",cruise_distance);
-    //start ramping up:
-    nav_msgs::Odometry des_state;
+void TrajBuilder::build_braking_traj(geometry_msgs::PoseStamped start_pose,
+		nav_msgs::Odometry start_velocity, 
+        std::vector<nav_msgs::Odometry> &vec_of_states) {
+	nav_msgs::Odometry des_state;
     des_state.header = start_pose.header; //really, want to copy the frame_id
     des_state.pose.pose = start_pose.pose; //start from here
     des_state.twist.twist = halt_twist_; // insist on starting from rest
-    int npts_ramp = round(t_ramp / dt_);
-    double x_des = x_start; //start from here
-    double y_des = y_start;
-    double speed_des = 0.0;
-    des_state.twist.twist.angular.z = 0.0; //omega_des; will not change
-    des_state.pose.pose.orientation = convertPlanarPsi2Quaternion(psi_des); //constant
-    // orientation of des_state will not change; only position and twist
-    
-    double t = 0.0;
-    for (int i = 0; i < npts_ramp; i++) {
-        speed_des -= accel_max_*dt_; //Euler one-step integration
-        des_state.twist.twist.linear.x = speed_des;
-        x_des += speed_des * dt_ * cos(psi_des); //Euler one-step integration
-        y_des += speed_des * dt_ * sin(psi_des); //Euler one-step integration        
-        des_state.pose.pose.position.x = x_des;
-        des_state.pose.pose.position.y = y_des;
-        vec_of_states.push_back(des_state);
+    double x_c = start_pose.pose.position.x;
+    double y_c = start_pose.pose.position.y;
+    double psi_c = convertPlanarQuat2Psi(start_pose.pose.orientation);
+    double x_velocity = start_velocity.twist.twist.linear.x;
+    double z_omega = start_velocity.twist.twist.angular.z;
+    double t_velocity_min = x_velocity/accel_max_;
+    double t_twist_min = z_omega/alpha_max_;
+    double t_max;
+
+    if(t_velocity_min > t_twist_min){
+    	t_max = t_velocity_min;
     }
-    //make sure the last state is precisely where requested, and at rest:
-    des_state.pose.pose = end_pose.pose;
-    //but final orientation will follow from point-and-go direction
-    des_state.pose.pose.orientation = convertPlanarPsi2Quaternion(psi_des);
-    des_state.twist.twist = halt_twist_; // insist on starting from rest
+    else{
+    	t_max = t_twist_min;
+    }
+
+    double accel_c = x_velocity/t_max;
+    double alpha_c = z_omega/t_max;
+    int n_stepnum = t_max/dt_;
+    double x_velocity_c = x_velocity;
+    double z_omega_c = z_omega;
+
+    double t_c = 0;
+
+    vec_of_states.clear();
+
+    for(int i = 0; i < n_stepnum; i++) {
+    	x_velocity_c -= dt_ * accel_c;
+    	des_state.twist.twist.linear.x = x_velocity_c;
+    	z_omega_c -= dt_ * alpha_c;
+    	des_state.twist.twist.angular.z = z_omega_c;
+    	psi_c += z_omega_c * dt_;
+    	x_c += x_velocity_c * dt_ * cos(psi_c);
+    	y_c += x_velocity_c * dt_ * sin(psi_c);
+    	des_state.pose.pose.position.x = x_c; //start from here
+    	des_state.pose.pose.position.y = y_c; //start from here
+    	des_state.pose.pose.orientation = convertPlanarPsi2Quaternion(psi_c); // insist on starting from rest
+    	vec_of_states.push_back(des_state);
+
+    }
+    des_state.twist.twist.linear.x = 0;
+    des_state.twist.twist.angular.z = 0;
     vec_of_states.push_back(des_state);
+
 }
 
 //main fnc of this library: constructs a spin-in-place reorientation to
@@ -482,5 +486,4 @@ void TrajBuilder::build_point_and_go_traj(geometry_msgs::PoseStamped start_pose,
     //start next segment where previous segment left off
     ROS_INFO("building translational trajectory");
     build_travel_traj(bridge_pose, end_pose, vec_of_states);
-
 }
