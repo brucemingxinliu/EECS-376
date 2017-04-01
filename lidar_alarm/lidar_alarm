@@ -1,6 +1,3 @@
-//lidar_alarm as a action client subscribed to  mobot_state. 
-
-
 #include <ros/ros.h> //Must include this for all ROS cpp projects
 #include <sensor_msgs/LaserScan.h>
 #include <std_msgs/Float32.h> //Including the Float32 class from std_msgs
@@ -20,11 +17,20 @@ double angle_increment_=0.01;
 double range_min_ = -500.0;
 double range_max_ = 500.0;
 bool laser_alarm_=false;
-int ping_index_start;
-int ping_index_end;
+double ping_index_start;
+double ping_index_end;
+
+int ping_index_start_int;
+int ping_index_end_int;
+bool encounteredLowRange; 
 
 ros::Publisher lidar_alarm_publisher_;
 ros::Publisher lidar_dist_publisher_;
+ros::ServiceClient client;
+ros::ServiceClient client_;
+std_srvs::Trigger trig;
+std_srvs::Trigger reset;
+
 // really, do NOT want to depend on a single ping.  Should consider a subset of pings
 // to improve reliability and avoid false alarms or failure to see an obstacle
 
@@ -42,26 +48,35 @@ void laserCallback(const sensor_msgs::LaserScan& laser_scan) {
         // what is the index of the ping that is straight ahead?
         // BETTER would be to use transforms, which would reference how the LIDAR is mounted;
         // but this will do for simple illustration
-        ping_index_start = (-1.57 -angle_min_)/angle_increment_;
-        ping_index_end = (1.57 -angle_min_)/angle_increment_;
+        ping_index_start = (-0.78 -angle_min_)/angle_increment_;
+        ping_index_end = (0.78 -angle_min_)/angle_increment_;
+
+	ping_index_start_int = (int)ping_index_start;
+	ping_index_end_int = (int)ping_index_end;
         ROS_INFO("LIDAR setup: i = %d , r = %d",ping_index_start, ping_index_end);
         
     }
+   encounteredLowRange=false; 
     
-   for (double i = ping_index_start; i <= ping_index_end; angle_increment_){
-   i = i + angle_increment_;
+   for (int i = ping_index_start_int; i <= ping_index_end_int; i++){
    ping_dist_in_front_ = laser_scan.ranges[i];
-   
+   ROS_INFO("ping index start is = %d", ping_index_start_int);
+   ROS_INFO("ping index end is  = %d" , ping_index_end_int);  
    ROS_INFO("ping dist in front = %f",ping_dist_in_front_);
    if (ping_dist_in_front_<MIN_SAFE_DISTANCE) {
        ROS_WARN("DANGER, WILL ROBINSON!!");
        laser_alarm_=true;
+       client.call(trig);
+       encounteredLowRange = true;
+       
        
    }
-   else {
+   else if ((ping_dist_in_front_>MIN_SAFE_DISTANCE) & encounteredLowRange == false){
        laser_alarm_=false;
-
+       client_.call(reset);
         }
+
+       
    std_msgs::Bool lidar_alarm_msg;
    lidar_alarm_msg.data = laser_alarm_;
    lidar_alarm_publisher_.publish(lidar_alarm_msg);
@@ -77,16 +92,15 @@ int main(int argc, char **argv) {
     ros::NodeHandle nh; 
     //create a Subscriber object and have it subscribe to the lidar topic
  
-    ros::ServiceClient client = nh.serviceClient<std_srvs::Trigger>("estop_service");
-    ros::ServiceClient client_ = nh.serviceClient<std_srvs::Trigger>("clear_estop_service");
+    client = nh.serviceClient<std_srvs::Trigger>("estop_service");
+     client_ = nh.serviceClient<std_srvs::Trigger>("clear_estop_service");
    
     while (!client.exists()) {
       ROS_INFO("waiting for service...");
       ros::Duration(1.0).sleep();
     }
     ROS_INFO("connected to service");
-    std_srvs::Trigger trig;
-    std_srvs::Trigger reset;
+    
 
     //ros::ServiceClient client__ = nh.serviceClient<std_srvs::Trigger>("flush_path_queue_service");
    // std_srvs::Trigger flush;
@@ -103,15 +117,6 @@ int main(int argc, char **argv) {
     // main program essentially hangs here, but it must stay alive to keep the callback function alive
 
 
-    if(laser_alarm_ = false){
-    client.call(trig);
-    
-    }
-
-    else{
-    client_.call(reset);
-    }
-       
    
      ros::spin(); 
 
